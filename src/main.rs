@@ -1,9 +1,4 @@
-use ggez::{
-    conf,
-    event::{self},
-    input::keyboard::KeyInput,
-    Context, GameResult,
-};
+use ggez::{conf, event, input::keyboard::KeyInput, Context, GameResult};
 use specs::{RunNow, World, WorldExt};
 use std::path;
 
@@ -67,15 +62,14 @@ pub fn initialize_level(world: &mut World) {
     const MAP: &str = "
     N N W W W W W W
     W W W . . . . W
-    W . . . B . . W
-    W . . . . . . W 
+    W . . . BB . . W
+    W . . RB . . . W 
     W . P . . . . W
-    W . . . . . . W
-    W . . S . . . W
+    W . . . . RS . W
+    W . . BS . . . W
     W . . . . . . W
     W W W W W W W W
     ";
-
     load_map(world, MAP.to_string());
 }
 

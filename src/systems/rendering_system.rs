@@ -14,7 +14,7 @@ pub struct RenderingSystem<'a> {
 
 impl RenderingSystem<'_> {
     pub fn draw_text(&mut self, canvas: &mut Canvas, text_string: &str, x: f32, y: f32) {
-        let mut text = graphics::Text::new(text_string);
+        let text = graphics::Text::new(text_string);
         let destination = Vec2::new(x, y);
         let color = Color::new(0.0, 0.0, 0.0, 1.0);
 
