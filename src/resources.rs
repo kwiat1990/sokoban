@@ -1,3 +1,5 @@
+use crate::{audio::AudioStore, events::Event};
+
 use ggez::winit::event::VirtualKeyCode;
 use specs::World;
 use std::{
@@ -35,8 +37,15 @@ pub struct Time {
     pub delta: Duration,
 }
 
+#[derive(Default)]
+pub struct EventQueue {
+    pub events: Vec<Event>,
+}
+
 pub fn register_resources(world: &mut World) {
     world.insert(InputQueue::default());
     world.insert(Gameplay::default());
     world.insert(Time::default());
+    world.insert(EventQueue::default());
+    world.insert(AudioStore::default());
 }
