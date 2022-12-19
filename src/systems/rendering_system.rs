@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
 use crate::constants::TILE_WIDTH;
@@ -5,10 +6,11 @@ use crate::resources::Time;
 use crate::{components::*, resources::Gameplay};
 
 use ggez::{
-    graphics::{self, Canvas, Color, DrawParam, Image},
+    graphics::{self, Canvas, Color, DrawParam, Image, InstanceArray},
     Context,
 };
 use glam::Vec2;
+use itertools::Itertools;
 use specs::{Join, Read, ReadStorage, System};
 
 pub struct RenderingSystem<'a> {
@@ -27,7 +29,7 @@ impl RenderingSystem<'_> {
         )
     }
 
-    pub fn get_image(&mut self, renderable: &Renderable, delta: Duration) -> Image {
+    pub fn get_image(&mut self, renderable: &Renderable, delta: Duration) -> String {
         let path_index = match renderable.kind() {
             RenderableKind::Static => {
                 // We only have one image, so we just return that
@@ -43,8 +45,8 @@ impl RenderingSystem<'_> {
             }
         };
 
-        let image_path = renderable.path(path_index);
-        Image::from_path(self.context, image_path).expect("expected image")
+        renderable.path(path_index)
+        // Image::from_path(self.context, image_path).expect("expected image")
     }
 }
 
@@ -65,27 +67,51 @@ impl<'a> System<'a> for RenderingSystem<'a> {
         let mut canvas =
             Canvas::from_frame(self.context, graphics::Color::new(0.95, 0.95, 0.95, 1.0));
 
-        // Get all the renderables with their positions and sort by the position z
-        // This will allow us to have entities layered visually.
-        let mut rendering_data = (&positions, &renderables).join().collect::<Vec<_>>();
-        rendering_data.sort_by_key(|&k| k.0.z);
+        // Get all the renderables with their positions.
+        let rendering_data = (&positions, &renderables).join().collect::<Vec<_>>();
+        let mut rendering_batches: HashMap<u8, HashMap<String, Vec<DrawParam>>> = HashMap::new();
 
-        // Iterate through all pairs of positions & renderables, load the image
-        // and draw it at the specified position.
+        // Iterate each of the renderables, determine which image path should be rendered
+        // at which drawparams, and then add that to the rendering_batches.
         for (position, renderable) in rendering_data.iter() {
             // Load the image
-            let image = self.get_image(renderable, time.delta);
+            let image_path = self.get_image(renderable, time.delta);
+
             let x = position.x as f32 * TILE_WIDTH;
             let y = position.y as f32 * TILE_WIDTH;
+            let z = position.z;
 
-            // draw
-            let draw_params = DrawParam::new().dest(Vec2::new(x, y));
-            canvas.draw(&image, draw_params);
+            // Add to rendering batches
+            let draw_param = DrawParam::new().dest(Vec2::new(x, y));
+            rendering_batches
+                .entry(z)
+                .or_default()
+                .entry(image_path)
+                .or_default()
+                .push(draw_param);
         }
 
+        // Iterate spritebatches ordered by z and actually render each of them
+        for (_z, group) in rendering_batches
+            .iter()
+            .sorted_by(|a, b| Ord::cmp(&a.0, &b.0))
+        {
+            for (image_path, draw_params) in group {
+                let image = Image::from_path(self.context, image_path).expect("expected image");
+                let mut sprite_batch = InstanceArray::new(self.context, image);
+
+                for draw_param in draw_params.iter() {
+                    sprite_batch.push(*draw_param);
+                }
+
+                canvas.draw(&sprite_batch, DrawParam::new());
+            }
+        }
         // Render any text
         self.draw_text(&mut canvas, &gameplay.state.to_string(), 525.0, 80.0);
         self.draw_text(&mut canvas, &gameplay.moves_count.to_string(), 525.0, 120.0);
+        let fps = format!("FPS: {:.0}", self.context.time.fps());
+        self.draw_text(&mut canvas, &fps, 525.0, 160.0);
 
         // Finally, present the context, this will actually display everything
         // on the screen.
