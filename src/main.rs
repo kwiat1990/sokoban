@@ -19,7 +19,7 @@ struct Game {
 }
 
 impl event::EventHandler<ggez::GameError> for Game {
-    fn update(&mut self, _context: &mut Context) -> GameResult {
+    fn update(&mut self, context: &mut Context) -> GameResult {
         // Run input system
         {
             let mut is = InputSystem {};
@@ -30,6 +30,12 @@ impl event::EventHandler<ggez::GameError> for Game {
         {
             let mut gss = GameplayStateSystem {};
             gss.run_now(&self.world);
+        }
+
+        // Get and update time resource
+        {
+            let mut time = self.world.write_resource::<Time>();
+            time.delta += context.time.delta();
         }
 
         Ok(())
